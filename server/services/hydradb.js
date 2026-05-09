@@ -14,7 +14,7 @@ const __dir = dirname(fileURLToPath(import.meta.url))
 const DATA_DIR = join(__dir, '..', 'data')
 const DB_FILE = join(DATA_DIR, 'memory.json')
 const HYDRADB_DEFAULT_API_URL = 'https://api.hydradb.com'
-const HYDRADB_DEFAULT_TENANT_ID = 'corgi-cafe'
+const HYDRADB_DEFAULT_TENANT_ID = 'corgicafe'
 const HYDRADB_PROFILE_TITLE_PREFIX = 'Corgi Cafe profile'
 
 export function getActiveStorageLayer() {

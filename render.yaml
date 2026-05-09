@@ -37,7 +37,7 @@ services:
       - key: HYDRADB_API_KEY
         sync: false
       - key: HYDRADB_TENANT_ID
-        value: corgi-cafe
+        value: corgicafe
       - key: HYDRADB_API_URL
         value: https://api.hydradb.com
       - key: THINE_API_KEY
