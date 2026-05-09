@@ -44,10 +44,12 @@ export function buildContext(userId, toolOutputs, document, conversation, memory
     parts += section('document_cross_reference_meta', toolOutputs.crossReference)
   }
 
-  // Full episodic history — the 1M-token showcase
+  // Full episodic history — strip raw conversationLog (verbatim transcripts) to keep
+  // context lean for reasoning models; summaries and workContext are sufficient.
   const episodic = memory?.episodic ?? memory?.visitHistory ?? []
   if (episodic.length > 0) {
-    parts += section('full_episodic_history', episodic)
+    const compact = episodic.map(({ conversationLog: _omit, ...rest }) => rest)
+    parts += section('full_episodic_history', compact)
   }
 
   // Uploaded document — full text, no truncation

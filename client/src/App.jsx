@@ -32,6 +32,7 @@ export default function App() {
   const [workContext, setWorkContext] = useState([])
   const [showHistory, setShowHistory] = useState(false)
   const nudgeTimerRef = useRef(null)
+  const historyRef = useRef(null)
 
   useEffect(() => {
     const greeting = GREETINGS[Math.floor(Math.random() * GREETINGS.length)]
@@ -41,14 +42,25 @@ export default function App() {
     }, 600)
   }, [])
 
+  // Close history on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (historyRef.current && !historyRef.current.contains(e.target)) {
+        setShowHistory(false)
+      }
+    }
+    if (showHistory) document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showHistory])
+
   // Proactive nudge after inactivity
   useEffect(() => {
     if (messages.length === 0 || isLoading) return
     clearTimeout(nudgeTimerRef.current)
     nudgeTimerRef.current = setTimeout(() => {
-      if (memory?.personalContext?.pendingTasks?.length > 0) {
-        const task = memory.personalContext.pendingTasks[0]
-        setSpeechText(`Hey, just checking — you mentioned "${task}". Still on your plate? 🐾`)
+      if (memory?.prospective?.items?.length > 0) {
+        const item = memory.prospective.items[0]
+        setSpeechText(`Hey, just checking — ${item.content} 🐾`)
         setCorgiState('listening')
       }
     }, 30000)
@@ -164,90 +176,97 @@ export default function App() {
   const visitHistory = memory?.episodic ?? memory?.visitHistory ?? []
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--cream)' }}>
+    <div className="h-screen flex flex-col overflow-hidden bg-white">
       {/* Header */}
-      <header className="border-b-4 border-[#4A3228] bg-white sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+      <header className="border-b-4 border-[#FF5C00] bg-white flex-shrink-0 z-10">
+        <div className="max-w-2xl mx-auto px-4 py-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xl">🐾</span>
-            <span className="font-pixel text-[#4A3228] text-xs">CORGI MEMORY</span>
+            <span className="text-lg">🐾</span>
+            <span className="font-pixel text-[#FF5C00] text-xs">CORGI MEMORY</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3" ref={historyRef} style={{ position: 'relative' }}>
             {meta?.tokenEstimate > 0 && (
-              <span className="text-xs font-pixel text-[#7DB87D]">
+              <span className="text-xs font-pixel text-[#FF5C00]">
                 {meta.tokenEstimate >= 1000 ? `${Math.round(meta.tokenEstimate / 1000)}K` : meta.tokenEstimate} tokens
               </span>
             )}
             <button
               onClick={() => setShowHistory(h => !h)}
-              className="text-xs text-[#7A5A4A] hover:text-[#4A3228] px-2 py-1 rounded border-2 border-transparent hover:border-[#4A3228] transition-all font-medium"
+              className="text-xs text-[#666666] hover:text-[#FF5C00] px-2 py-1 rounded border-2 border-[#E8E8E8] hover:border-[#FF5C00] transition-all"
             >
               {visitHistory.length > 0 ? `${visitHistory.length} visits` : 'history'}
             </button>
+
+            {/* History dropdown — floats over content */}
+            {showHistory && (
+              <div className="absolute top-full right-0 mt-1 w-72 pixel-border rounded bg-white p-4 animate-slide-up z-20">
+                <div className="text-xs font-pixel text-[#FF5C00] mb-3">VISIT HISTORY</div>
+                {visitHistory.length === 0 ? (
+                  <div className="text-xs text-[#AAAAAA]">No visits yet — first time here!</div>
+                ) : (
+                  <div className="space-y-2 max-h-40 overflow-y-auto chat-scroll">
+                    {[...visitHistory].reverse().slice(0, 8).map((v, i) => (
+                      <div key={i} className="text-xs text-[#1A1A1A] border-b border-[#F0F0F0] pb-2 flex gap-3">
+                        <span className="text-[#666666]">
+                          {new Date(v.timestamp).toLocaleDateString()}
+                        </span>
+                        {v.drinkOrdered && <span className="text-[#D4748A]">☕ {v.drinkOrdered}</span>}
+                        {v.mood && <span className="text-[#7DB87D]">{v.mood}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-6 flex flex-col gap-5">
+      {/* Main — fills remaining height, no overflow */}
+      <main className="flex-1 min-h-0 flex flex-col">
+        <div className="flex-1 min-h-0 flex flex-col max-w-2xl mx-auto w-full px-4">
 
-        {/* History Panel */}
-        {showHistory && (
-          <div className="pixel-border rounded bg-white p-4 animate-slide-up">
-            <div className="text-xs font-pixel text-[#4A3228] mb-3">VISIT HISTORY</div>
-            {visitHistory.length === 0 ? (
-              <div className="text-xs text-[#C8A882]">No visits yet — this is your first time here!</div>
-            ) : (
-              <div className="space-y-2 max-h-40 overflow-y-auto chat-scroll">
-                {[...visitHistory].reverse().slice(0, 8).map((v, i) => (
-                  <div key={i} className="text-xs text-[#4A3228] border-b border-amber-100 pb-2 flex gap-3">
-                    <span className="font-semibold text-[#7A5A4A]">
-                      {new Date(v.timestamp).toLocaleDateString()}
-                    </span>
-                    {v.drinkOrdered && <span className="text-[#D4748A]">☕ {v.drinkOrdered}</span>}
-                    {v.mood && <span className="text-[#7DB87D]">{v.mood}</span>}
-                  </div>
-                ))}
-              </div>
-            )}
+          {/* Corgi stage — compact, fixed */}
+          <div className="flex flex-col items-center flex-shrink-0 pt-2" style={{ gap: '8px' }}>
+            <CorgiSpeechBubble text={speechText} isTyping={isTyping && !speechText} />
+            <PixelCorgi state={corgiState} size={128} />
           </div>
-        )}
 
-        {/* Corgi Stage */}
-        <div className="flex flex-col items-center gap-1 py-2">
-          <CorgiSpeechBubble text={speechText} isTyping={isTyping && !speechText} />
-          <div className="relative mt-2">
-            <PixelCorgi state={corgiState} size={224} />
+          {/* ThinkingDrawer */}
+          <div className="flex-shrink-0 mt-2">
+            <ThinkingDrawer
+              isThinking={isThinking}
+              toolsUsed={meta?.toolsUsed ?? []}
+              tokenEstimate={meta?.tokenEstimate ?? 0}
+              intent={meta?.intent}
+              totalTimeMs={meta?.totalTimeMs}
+            />
           </div>
-        </div>
 
-        {/* Thinking Drawer */}
-        <ThinkingDrawer
-          isThinking={isThinking}
-          toolsUsed={meta?.toolsUsed ?? []}
-          tokenEstimate={meta?.tokenEstimate ?? 0}
-          intent={meta?.intent}
-          totalTimeMs={meta?.totalTimeMs}
-        />
+          {/* Context Cards */}
+          <div className="flex-shrink-0 mt-2">
+            <ContextCards
+              recommendation={recommendation}
+              workContext={workContext}
+              memoryStats={memoryStats}
+              crossSessionReference={crossSessionReference}
+            />
+          </div>
 
-        {/* Context Cards */}
-        <ContextCards
-          recommendation={recommendation}
-          workContext={workContext}
-          memoryStats={memoryStats}
-          crossSessionReference={crossSessionReference}
-        />
+          {/* Chat — fills all remaining space */}
+          <div className="flex-1 min-h-0 flex flex-col mt-2">
+            <ChatInterface
+              messages={messages}
+              onSend={handleSend}
+              onUpload={handleUpload}
+              isLoading={isLoading}
+            />
+          </div>
 
-        {/* Chat */}
-        <ChatInterface
-          messages={messages}
-          onSend={handleSend}
-          onUpload={handleUpload}
-          isLoading={isLoading}
-        />
+          <div className="text-center py-1 flex-shrink-0">
+            <span className="text-xs text-[#CCCCCC]">☕ Corgi Cafe · Powered by long-context AI</span>
+          </div>
 
-        {/* Footer */}
-        <div className="text-center pb-4">
-          <span className="text-xs text-[#C8A882]">☕ Corgi Cafe · Powered by long-context AI</span>
         </div>
       </main>
     </div>

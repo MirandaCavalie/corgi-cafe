@@ -29,20 +29,28 @@ export default function DocumentUpload({ onUpload, onClose }) {
   return (
     <div className="absolute bottom-full left-0 mb-2 bg-white pixel-border rounded p-4 w-72 z-20 animate-slide-up">
       <div className="flex items-center justify-between mb-3">
-        <div className="text-xs font-pixel text-[#4A3228]">ADD CONTEXT</div>
-        <button onClick={onClose} className="text-[#C8A882] hover:text-[#4A3228] text-lg leading-none">×</button>
+        <div className="text-xs font-pixel text-[#FF5C00]">ADD CONTEXT</div>
+        <button onClick={onClose} className="text-[#AAAAAA] hover:text-[#FF5C00] text-lg leading-none transition-colors">×</button>
       </div>
 
       <div className="flex gap-2 mb-3">
         <button
           onClick={() => setTab('paste')}
-          className={`text-xs px-2 py-1 rounded ${tab === 'paste' ? 'bg-[#4A3228] text-white' : 'bg-amber-50 text-[#4A3228]'}`}
+          className={`text-xs px-2 py-1 rounded transition-colors ${
+            tab === 'paste'
+              ? 'bg-[#FF5C00] text-white'
+              : 'bg-[#F5F5F5] text-[#666666] hover:text-[#1A1A1A]'
+          }`}
         >
           Paste Text
         </button>
         <button
           onClick={() => setTab('file')}
-          className={`text-xs px-2 py-1 rounded ${tab === 'file' ? 'bg-[#4A3228] text-white' : 'bg-amber-50 text-[#4A3228]'}`}
+          className={`text-xs px-2 py-1 rounded transition-colors ${
+            tab === 'file'
+              ? 'bg-[#FF5C00] text-white'
+              : 'bg-[#F5F5F5] text-[#666666] hover:text-[#1A1A1A]'
+          }`}
         >
           Upload File
         </button>
@@ -54,12 +62,12 @@ export default function DocumentUpload({ onUpload, onClose }) {
             value={pasteText}
             onChange={e => setPasteText(e.target.value)}
             placeholder="Paste your doc, code, notes, or anything..."
-            className="w-full h-28 text-sm p-2 border-2 border-[#D4C4B0] rounded resize-none focus:outline-none focus:border-[#4A3228] text-[#4A3228]"
+            className="w-full h-28 text-sm p-2 border-2 border-[#E8E8E8] rounded resize-none focus:outline-none focus:border-[#FF5C00] bg-white text-[#1A1A1A] placeholder-[#AAAAAA] transition-colors"
           />
           <button
             onClick={handlePaste}
             disabled={!pasteText.trim()}
-            className="mt-2 w-full py-2 bg-[#4A3228] text-white text-xs font-pixel rounded hover:bg-[#6B3A2A] disabled:opacity-40 transition-colors"
+            className="mt-2 w-full py-2 bg-[#FF5C00] text-white text-xs font-pixel rounded hover:bg-[#CC4A00] disabled:opacity-40 transition-colors pixel-border-sm"
           >
             ANALYZE
           </button>
@@ -71,12 +79,14 @@ export default function DocumentUpload({ onUpload, onClose }) {
           onDrop={handleDrop}
           onClick={() => fileRef.current?.click()}
           className={`border-2 border-dashed rounded p-6 text-center cursor-pointer transition-colors ${
-            isDragging ? 'border-[#4A3228] bg-amber-50' : 'border-[#D4C4B0] hover:border-[#4A3228]'
+            isDragging
+              ? 'border-[#FF5C00] bg-[#FFF5F0]'
+              : 'border-[#E8E8E8] hover:border-[#FF5C00]'
           }`}
         >
           <div className="text-2xl mb-2">📎</div>
-          <div className="text-xs text-[#7A5A4A]">Drop a file or click to browse</div>
-          <div className="text-xs text-[#C8A882] mt-1">.txt, .md, .py, .js, .pdf</div>
+          <div className="text-xs text-[#666666]">Drop a file or click to browse</div>
+          <div className="text-xs text-[#AAAAAA] mt-1">.txt, .md, .py, .js, .pdf</div>
           <input
             ref={fileRef}
             type="file"

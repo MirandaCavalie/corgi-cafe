@@ -20,18 +20,20 @@ export default function MoodSelector({ onSelect, onClose }) {
 
   return (
     <div className="absolute bottom-full left-0 mb-2 bg-white pixel-border rounded p-3 z-20 animate-slide-up">
-      <div className="text-xs font-pixel text-[#4A3228] mb-2">HOW ARE YOU?</div>
+      <div className="text-xs font-pixel text-[#FF5C00] mb-2">HOW ARE YOU?</div>
       <div className="grid grid-cols-3 gap-2">
         {MOODS.map(mood => (
           <button
             key={mood.value}
             onClick={() => handleSelect(mood)}
-            className={`flex flex-col items-center gap-1 p-2 rounded hover:bg-amber-50 transition-colors ${
-              selected === mood.value ? 'bg-amber-100' : ''
+            className={`flex flex-col items-center gap-1 p-2 rounded transition-colors ${
+              selected === mood.value
+                ? 'bg-[#FFF0E8] border border-[#FF5C00]/40'
+                : 'hover:bg-[#FFF5F0] border border-transparent'
             }`}
           >
             <span className="text-xl">{mood.emoji}</span>
-            <span className="text-xs text-[#4A3228]">{mood.label}</span>
+            <span className="text-xs text-[#1A1A1A]">{mood.label}</span>
           </button>
         ))}
       </div>

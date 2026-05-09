@@ -24,7 +24,6 @@ export default function ThinkingDrawer({ isThinking, toolsUsed = [], tokenEstima
   const rafRef = useRef(null)
   const collapseTimerRef = useRef(null)
 
-  // Reveal tool steps with stagger when thinking starts
   useEffect(() => {
     if (isThinking && toolsUsed.length > 0) {
       setCollapsed(false)
@@ -43,7 +42,6 @@ export default function ThinkingDrawer({ isThinking, toolsUsed = [], tokenEstima
     }
   }, [isThinking, toolsUsed.length])
 
-  // Animate token counter
   useEffect(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current)
 
@@ -69,7 +67,6 @@ export default function ThinkingDrawer({ isThinking, toolsUsed = [], tokenEstima
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
   }, [isThinking, tokenEstimate]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Collapse after response + 2s
   useEffect(() => {
     if (totalTimeMs && !isThinking) {
       collapseTimerRef.current = setTimeout(() => setCollapsed(true), 2000)
@@ -89,20 +86,20 @@ export default function ThinkingDrawer({ isThinking, toolsUsed = [], tokenEstima
   const hasSteps = toolsUsed.length > 0
 
   return (
-    <div className="pixel-border-sm rounded bg-amber-50 border-amber-200 p-3 animate-slide-up">
+    <div className="pixel-border-sm rounded bg-[#FFFBF7] border-[#FFD4BB] p-3 animate-slide-up">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-pixel text-[#4A3228]">
+        <span className="text-xs font-pixel text-[#FF5C00]">
           {'⚡ '}{intent ? (INTENT_LABELS[intent] ?? intent) : 'thinking'}
         </span>
         {displayCount > 0 && (
-          <span className="font-pixel text-xs text-[#7DB87D]">
+          <span className="font-pixel text-xs text-[#FF5C00]">
             {formatTokens(displayCount)} tokens
           </span>
         )}
       </div>
 
       {!hasSteps && isThinking && (
-        <div className="text-xs text-[#7A5A4A] flex items-center gap-2">
+        <div className="text-xs text-[#666666] flex items-center gap-2">
           <span className="animate-pulse">⏳</span>
           <span>Running tools...</span>
         </div>
@@ -117,10 +114,10 @@ export default function ThinkingDrawer({ isThinking, toolsUsed = [], tokenEstima
             return (
               <div
                 key={i}
-                className={'flex items-center gap-2 text-xs transition-opacity duration-300 ' + (pending ? 'opacity-30' : 'opacity-100')}
+                className={'flex items-center gap-2 text-xs transition-opacity duration-300 ' + (pending ? 'opacity-20' : 'opacity-100')}
               >
                 <span>{done || active ? '✅' : '⏳'}</span>
-                <span className={done ? 'text-[#4A3228]' : 'text-[#7A5A4A]'}>{label}</span>
+                <span className={done ? 'text-[#1A1A1A]' : 'text-[#666666]'}>{label}</span>
               </div>
             )
           })}
@@ -128,15 +125,15 @@ export default function ThinkingDrawer({ isThinking, toolsUsed = [], tokenEstima
       )}
 
       {isThinking && displayCount > 0 && (
-        <div className="mt-2 pt-2 border-t border-amber-200">
+        <div className="mt-2 pt-2 border-t border-[#FFD4BB]">
           <div className="flex items-center gap-2">
-            <div className="flex-1 bg-amber-200 rounded-full h-1.5 overflow-hidden">
+            <div className="flex-1 bg-[#FFE8D6] rounded-full h-1.5 overflow-hidden">
               <div
-                className="h-full bg-[#7DB87D] transition-all duration-300"
+                className="h-full bg-[#FF5C00] transition-all duration-300"
                 style={{ width: Math.min(100, (displayCount / 1_000_000) * 100) + '%' }}
               />
             </div>
-            <span className="font-pixel text-xs text-[#7DB87D] min-w-[70px] text-right">
+            <span className="font-pixel text-xs text-[#FF5C00] min-w-[70px] text-right">
               {formatTokens(displayCount)}
             </span>
           </div>
@@ -144,7 +141,7 @@ export default function ThinkingDrawer({ isThinking, toolsUsed = [], tokenEstima
       )}
 
       {!isThinking && totalTimeMs > 0 && (
-        <div className="mt-1.5 text-xs text-[#C8A882]">
+        <div className="mt-1.5 text-xs text-[#AAAAAA]">
           {(totalTimeMs / 1000).toFixed(1)}s · {formatTokens(tokenEstimate)} tokens
         </div>
       )}

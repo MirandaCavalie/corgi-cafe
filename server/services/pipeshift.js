@@ -11,14 +11,14 @@ const FALLBACK = {
 export async function callLLM(assembledContext, userMessage) {
   let raw
 
-  if (process.env.ANTHROPIC_API_KEY) {
-    raw = await callAnthropic(assembledContext, userMessage)
-  } else if (process.env.PIPESHIFT_API_KEY) {
+  if (process.env.PIPESHIFT_API_KEY) {
     raw = await callOpenAICompatible(assembledContext, userMessage, {
       apiKey:  process.env.PIPESHIFT_API_KEY,
       baseUrl: process.env.PIPESHIFT_BASE_URL || 'https://api.pipeshift.com/api/v0/chat/completions',
       model:   process.env.PIPESHIFT_MODEL    || 'moonshotai/Kimi-K2.6',
     })
+  } else if (process.env.ANTHROPIC_API_KEY) {
+    raw = await callAnthropic(assembledContext, userMessage)
   } else if (process.env.OPENAI_API_KEY) {
     raw = await callOpenAICompatible(assembledContext, userMessage, {
       apiKey:  process.env.OPENAI_API_KEY,
@@ -26,7 +26,7 @@ export async function callLLM(assembledContext, userMessage) {
       model:   'gpt-4o-mini',
     })
   } else {
-    throw new Error('No API key found. Set ANTHROPIC_API_KEY, PIPESHIFT_API_KEY, or OPENAI_API_KEY in .env')
+    throw new Error('No API key found. Set PIPESHIFT_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY in .env')
   }
 
   const cleaned = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
@@ -35,35 +35,6 @@ export async function callLLM(assembledContext, userMessage) {
   } catch {
     return { ...FALLBACK, message: raw.slice(0, 300) }
   }
-}
-
-async function callAnthropic(assembledContext, userMessage) {
-  const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514'
-
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type':    'application/json',
-      'x-api-key':       process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 1024,
-      system: assembledContext,
-      messages: [{ role: 'user', content: userMessage }],
-    }),
-  })
-
-  const data = await response.json()
-
-  if (!response.ok || data.error) {
-    console.error('Anthropic API error:', data.error ?? response.status)
-    return JSON.stringify(FALLBACK)
-  }
-
-  const block = data.content?.find(b => b.type === 'text')
-  return block?.text ?? JSON.stringify(FALLBACK)
 }
 
 async function callOpenAICompatible(assembledContext, userMessage, { apiKey, baseUrl, model }) {
@@ -82,14 +53,81 @@ async function callOpenAICompatible(assembledContext, userMessage, { apiKey, bas
         { role: 'user',   content: userMessage },
       ],
     }),
+    signal: AbortSignal.timeout(120_000),
   })
 
-  const data = await response.json()
+  const text = await response.text()
 
-  if (!response.ok || data.error) {
-    console.error('OpenAI-compatible API error:', data.error ?? response.status)
+  if (!response.ok) {
+    console.error('OpenAI-compatible API error:', response.status, text.slice(0, 200))
     return JSON.stringify(FALLBACK)
   }
 
-  return data.choices?.[0]?.message?.content ?? JSON.stringify(FALLBACK)
+  let data
+  try {
+    data = JSON.parse(text)
+  } catch {
+    console.error('Non-JSON response from API:', text.slice(0, 200))
+    return JSON.stringify(FALLBACK)
+  }
+
+  if (data.error) {
+    console.error('API returned error object:', JSON.stringify(data.error))
+    return JSON.stringify(FALLBACK)
+  }
+
+  const content = data.choices?.[0]?.message?.content
+  if (!content) {
+    const reason = data.choices?.[0]?.finish_reason
+    const reasoningTokens = data.usage?.completion_tokens_details?.reasoning_tokens ?? 0
+    console.error(`Empty content — finish_reason: ${reason}, reasoning_tokens: ${reasoningTokens}`)
+    if (reason === 'length' && reasoningTokens > 0) {
+      console.error('Reasoning model exhausted max_tokens in thinking phase — increase max_tokens further')
+    }
+    return JSON.stringify(FALLBACK)
+  }
+
+  return content
+}
+
+async function callAnthropic(assembledContext, userMessage) {
+  const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514'
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type':      'application/json',
+      'x-api-key':         process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 1024,
+      system:     assembledContext,
+      messages:   [{ role: 'user', content: userMessage }],
+    }),
+    signal: AbortSignal.timeout(120_000),
+  })
+
+  const text = await response.text()
+
+  if (!response.ok) {
+    console.error('Anthropic API error:', response.status, text.slice(0, 200))
+    return JSON.stringify(FALLBACK)
+  }
+
+  let data
+  try {
+    data = JSON.parse(text)
+  } catch {
+    return JSON.stringify(FALLBACK)
+  }
+
+  if (data.error) {
+    console.error('Anthropic returned error:', JSON.stringify(data.error))
+    return JSON.stringify(FALLBACK)
+  }
+
+  const block = data.content?.find(b => b.type === 'text')
+  return block?.text ?? JSON.stringify(FALLBACK)
 }
