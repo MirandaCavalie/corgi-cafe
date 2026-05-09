@@ -37,15 +37,27 @@ app.get('/api/menu', (_, res) => {
   res.json(DRINK_MENU)
 })
 
+function describeModel() {
+  const hasPipeshift = !!process.env.PIPESHIFT_API_KEY
+  const hasAnthropic = !!process.env.ANTHROPIC_API_KEY
+  const hasOpenAI    = !!process.env.OPENAI_API_KEY
+
+  if (hasPipeshift) {
+    if (hasAnthropic) return 'Pipeshift (fallback: Anthropic)'
+    if (hasOpenAI)    return 'Pipeshift (fallback: OpenAI)'
+    return 'Pipeshift'
+  }
+  if (hasAnthropic) return 'Anthropic'
+  if (hasOpenAI)    return 'OpenAI'
+  return 'none configured'
+}
+
 app.get('/api/health', (_, res) => {
   const storage = getActiveStorageLayer()
 
   res.json({
     status: 'ok',
-    model: process.env.PIPESHIFT_API_KEY ? 'Pipeshift'
-         : process.env.ANTHROPIC_API_KEY ? 'Anthropic'
-         : process.env.OPENAI_API_KEY ? 'OpenAI'
-         : 'none configured',
+    model: describeModel(),
     storage: storage.label,
     memory: storage.id,
     thine: process.env.THINE_API_KEY ? 'thine' : 'mock',
@@ -91,8 +103,6 @@ app.listen(PORT, '0.0.0.0', async () => {
 
   console.log(`\u{1F43E} Corgi Memory server running on :${PORT}`)
   console.log(`   Storage: ${storage.label}`)
-  console.log(`   Model: ${process.env.PIPESHIFT_API_KEY ? 'Pipeshift'
-                         : process.env.ANTHROPIC_API_KEY ? 'Anthropic'
-                         : process.env.OPENAI_API_KEY ? 'OpenAI' : 'none'}`)
+  console.log(`   Model: ${describeModel()}`)
   await seedDemoData()
 })
