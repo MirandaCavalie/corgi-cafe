@@ -132,7 +132,7 @@ export default function PixelDrink({ name, size = 8 }) {
   if (!drink) {
     // Generic cup fallback
     return (
-      <div className="text-3xl">☕</div>
+      <div className="font-pixel text-xs">CUP</div>
     )
   }
 

@@ -12,46 +12,41 @@ const DRINK_TYPES = {
   'Protein Smoothie': 'smoothie',
 }
 
-const DRINK_BORDERS = {
-  coffee:   'border-[#FF5C00]',
-  matcha:   'border-[#7DB87D]',
-  smoothie: 'border-[#D4748A]',
+const DRINK_CLASSES = {
+  coffee: 'drink-card--coffee',
+  matcha: 'drink-card--matcha',
+  smoothie: 'drink-card--smoothie',
 }
 
 export default function DrinkCard({ recommendation }) {
   if (!recommendation) {
     return (
-      <div className="context-card pixel-border-sm bg-white border-[#E8E8E8] rounded p-3 flex flex-col overflow-hidden">
-        <div className="text-xs font-pixel text-[#FF5C00] mb-2">☕ DRINK</div>
-        <div className="flex-1 flex items-center justify-center text-xs text-[#AAAAAA] text-center">
-          Chat to get your perfect drink!
+      <div className="context-card drink-card pixel-panel pixel-panel--small">
+        <div className="panel-title">DRINK</div>
+        <div className="empty-copy centered">
+          Ask for a pairing.
         </div>
       </div>
     )
   }
 
   const type = DRINK_TYPES[recommendation.name] || 'coffee'
-  const borderClass = DRINK_BORDERS[type]
 
   return (
     <div
-      className={`context-card pixel-border-sm bg-white ${borderClass} rounded p-3 flex flex-col overflow-hidden`}
+      className={`context-card drink-card ${DRINK_CLASSES[type]} pixel-panel pixel-panel--small`}
       aria-label={`drink recommendation: ${recommendation.name}`}
     >
-      <div className="text-xs font-pixel text-[#FF5C00] mb-2">☕ DRINK</div>
+      <div className="panel-title">DRINK</div>
 
-      <div className="flex justify-center mb-1">
+      <div className="drink-card__sprite">
         <PixelDrink name={recommendation.name} size={6} />
       </div>
 
-      <div className="text-center flex-1 overflow-hidden">
-        <div className="font-bold text-[#1A1A1A] text-xs leading-tight mb-1">
-          {recommendation.name}
-        </div>
+      <div className="drink-card__copy">
+        <strong>{recommendation.name}</strong>
         {recommendation.reason && (
-          <div className="text-xs text-[#666666] leading-relaxed line-clamp-2">
-            {recommendation.reason}
-          </div>
+          <span>{recommendation.reason}</span>
         )}
       </div>
     </div>

@@ -1,20 +1,20 @@
 import { useState, useEffect, useRef } from 'react'
 
 const TOOL_LABELS = {
-  retrieveSemanticMemory:    'Searching memory...',
-  getEnergyContext:          'Analyzing energy patterns...',
-  surfaceForgottenContext:   'Surfacing forgotten context...',
-  searchThineContext:        'Checking personal context...',
-  analyzeAndCrossReference:  'Cross-referencing document...',
-  evaluateDrinkFit:          'Evaluating drink fit...',
+  retrieveSemanticMemory: 'Search memory',
+  getEnergyContext: 'Read energy',
+  surfaceForgottenContext: 'Surface context',
+  searchThineContext: 'Check personal log',
+  analyzeAndCrossReference: 'Cross-reference doc',
+  evaluateDrinkFit: 'Evaluate drink fit',
 }
 
 const INTENT_LABELS = {
-  casual:        'casual chat',
-  work_help:     'work help',
+  casual: 'casual chat',
+  work_help: 'work help',
   drink_request: 'drink request',
-  memory_query:  'memory query',
-  upload:        'document upload',
+  memory_query: 'memory query',
+  upload: 'document upload',
 }
 
 export default function ThinkingDrawer({ isThinking, toolsUsed = [], tokenEstimate = 0, intent, totalTimeMs }) {
@@ -25,9 +25,12 @@ export default function ThinkingDrawer({ isThinking, toolsUsed = [], tokenEstima
   const collapseTimerRef = useRef(null)
 
   useEffect(() => {
+    let resetTimer
     if (isThinking && toolsUsed.length > 0) {
-      setCollapsed(false)
-      setVisibleSteps(0)
+      resetTimer = setTimeout(() => {
+        setCollapsed(false)
+        setVisibleSteps(0)
+      }, 0)
       const total = toolsUsed.length + 2
       let step = 0
       const interval = setInterval(() => {
@@ -35,10 +38,14 @@ export default function ThinkingDrawer({ isThinking, toolsUsed = [], tokenEstima
         setVisibleSteps(step)
         if (step >= total) clearInterval(interval)
       }, 350)
-      return () => clearInterval(interval)
+      return () => {
+        clearTimeout(resetTimer)
+        clearInterval(interval)
+      }
     }
     if (isThinking) {
-      setCollapsed(false)
+      resetTimer = setTimeout(() => setCollapsed(false), 0)
+      return () => clearTimeout(resetTimer)
     }
   }, [isThinking, toolsUsed.length])
 
@@ -49,7 +56,10 @@ export default function ThinkingDrawer({ isThinking, toolsUsed = [], tokenEstima
       ? Math.floor(200_000 + Math.random() * 400_000)
       : tokenEstimate
 
-    if (target === 0) { setDisplayCount(0); return }
+    if (target === 0) {
+      const resetTimer = setTimeout(() => setDisplayCount(0), 0)
+      return () => clearTimeout(resetTimer)
+    }
 
     const duration = 1200
     const start = performance.now()
@@ -79,34 +89,34 @@ export default function ThinkingDrawer({ isThinking, toolsUsed = [], tokenEstima
 
   const allSteps = [
     ...toolsUsed.map(t => TOOL_LABELS[t] ?? t),
-    'Assembling context window...',
-    'Synthesizing with long-context AI...',
+    'Assemble context',
+    'Synthesize reply',
   ]
 
   const hasSteps = toolsUsed.length > 0
 
   return (
-    <div className="pixel-border-sm rounded bg-[#FFFBF7] border-[#FFD4BB] p-3 animate-slide-up">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-pixel text-[#FF5C00]">
-          {'⚡ '}{intent ? (INTENT_LABELS[intent] ?? intent) : 'thinking'}
+    <div className="thinking-drawer pixel-panel pixel-panel--small animate-slide-up">
+      <div className="thinking-drawer__header">
+        <span className="panel-title">
+          {intent ? (INTENT_LABELS[intent] ?? intent) : 'thinking'}
         </span>
         {displayCount > 0 && (
-          <span className="font-pixel text-xs text-[#FF5C00]">
-            {formatTokens(displayCount)} tokens
+          <span className="hud-counter">
+            {formatTokens(displayCount)}
           </span>
         )}
       </div>
 
       {!hasSteps && isThinking && (
-        <div className="text-xs text-[#666666] flex items-center gap-2">
-          <span className="animate-pulse">⏳</span>
+        <div className="tool-row pending">
+          <span className="tool-pip" />
           <span>Running tools...</span>
         </div>
       )}
 
       {hasSteps && (
-        <div className="space-y-1">
+        <div className="tool-stack">
           {allSteps.map((label, i) => {
             const done = !isThinking
             const active = isThinking && i < visibleSteps
@@ -114,10 +124,10 @@ export default function ThinkingDrawer({ isThinking, toolsUsed = [], tokenEstima
             return (
               <div
                 key={i}
-                className={'flex items-center gap-2 text-xs transition-opacity duration-300 ' + (pending ? 'opacity-20' : 'opacity-100')}
+                className={`tool-row ${pending ? 'pending' : ''}`}
               >
-                <span>{done || active ? '✅' : '⏳'}</span>
-                <span className={done ? 'text-[#1A1A1A]' : 'text-[#666666]'}>{label}</span>
+                <span className={`tool-pip ${done || active ? 'tool-pip--on' : ''}`} />
+                <span>{label}</span>
               </div>
             )
           })}
@@ -125,24 +135,17 @@ export default function ThinkingDrawer({ isThinking, toolsUsed = [], tokenEstima
       )}
 
       {isThinking && displayCount > 0 && (
-        <div className="mt-2 pt-2 border-t border-[#FFD4BB]">
-          <div className="flex items-center gap-2">
-            <div className="flex-1 bg-[#FFE8D6] rounded-full h-1.5 overflow-hidden">
-              <div
-                className="h-full bg-[#FF5C00] transition-all duration-300"
-                style={{ width: Math.min(100, (displayCount / 1_000_000) * 100) + '%' }}
-              />
-            </div>
-            <span className="font-pixel text-xs text-[#FF5C00] min-w-[70px] text-right">
-              {formatTokens(displayCount)}
-            </span>
+        <div className="token-meter">
+          <div>
+            <span style={{ width: Math.min(100, (displayCount / 1_000_000) * 100) + '%' }} />
           </div>
+          <strong>{formatTokens(displayCount)}</strong>
         </div>
       )}
 
       {!isThinking && totalTimeMs > 0 && (
-        <div className="mt-1.5 text-xs text-[#AAAAAA]">
-          {(totalTimeMs / 1000).toFixed(1)}s · {formatTokens(tokenEstimate)} tokens
+        <div className="muted-line">
+          {(totalTimeMs / 1000).toFixed(1)}s // {formatTokens(tokenEstimate)} tokens
         </div>
       )}
     </div>

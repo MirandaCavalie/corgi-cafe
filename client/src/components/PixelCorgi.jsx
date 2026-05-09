@@ -1,368 +1,237 @@
 import { useEffect, useRef } from 'react'
-import { Application, Graphics, Container, Text, TextStyle } from 'pixi.js'
+import { Application, Assets, Container, Graphics, Sprite } from 'pixi.js'
 
-const C = {
-  orange:     0xD4883C,
-  darkOrange: 0xBE7630,
-  cream:      0xFFF3D4,
-  white:      0xFFFFFF,
-  darkBrown:  0x2D1B0E,
-  pink:       0xFF9EAF,
-  pinkDark:   0xE8879A,
-  outline:    0x3D2B1F,
+import excitedSprite from '../assets/corgi-states/excited.png'
+import idleSprite from '../assets/corgi-states/idle.png'
+import listeningSprite from '../assets/corgi-states/listening.png'
+import readingSprite from '../assets/corgi-states/reading.png'
+import servingSprite from '../assets/corgi-states/serving.png'
+import sleepySprite from '../assets/corgi-states/sleepy.png'
+import thinkingSprite from '../assets/corgi-states/thinking.png'
+
+const SPRITES = {
+  idle: idleSprite,
+  listening: listeningSprite,
+  thinking: thinkingSprite,
+  excited: excitedSprite,
+  serving: servingSprite,
+  sleepy: sleepySprite,
+  reading: readingSprite,
 }
 
-// 16x16 front-facing sitting corgi
-// . = transparent  O = orange fur  E = dark orange ear  e = pink inner ear
-// W = cream/white  D = dark brown (eye/outline)  h = white eye highlight
-// N = dark nose    P = pink tongue  C = cream paw
-const MAP = [
-  '...EEE......EEE.',  // row  0  — ear tips
-  '..EEEEE....EEEEE',  // row  1  — ears
-  '..EEeEE....EEeEE',  // row  2  — ears with pink inner
-  '..OOOOOOOOOOOO..',  // row  3  — top of head
-  '.OOOOOWWWWOOOOOO',  // row  4  — forehead, white blaze (cols 5-8)
-  '.OODhOWWWWOhDOO.',  // row  5  — eyes flanking blaze
-  '.WWWWWWWNWWWWWW.',  // row  6  — white cheeks, dark nose at col 8
-  '.WWWWWWWPWWWWWW.',  // row  7  — white cheeks, pink tongue col 8
-  '..OOOOOWWWWOOO..',  // row  8  — neck / upper chest
-  '.OOOOOOWWWOOOOOO',  // row  9  — body, white chest
-  '.OOOOOOWWWOOOOOO',  // row 10  — body
-  '.OOOOOOOOOOOOO..',  // row 11  — lower body
-  '..OOCCOO..OOCCOO',  // row 12  — paw fronts (C=cream paw highlight)
-  '..OCCCOO..OOCCC.',  // row 13  — paw bottoms
-]
+const STATE_NAMES = new Set(Object.keys(SPRITES))
 
-const COLOR_MAP = {
-  O: C.orange,
-  E: C.darkOrange,
-  e: C.pink,
-  W: C.cream,
-  C: C.cream,
-  D: C.darkBrown,
-  h: C.white,
-  N: C.darkBrown,
-  P: C.pink,
+function normalizeState(state) {
+  return STATE_NAMES.has(state) ? state : 'idle'
 }
 
-// Opaque pixel set for outline detection
-function isOpaque(row, col) {
-  if (row < 0 || row >= MAP.length) return false
-  const r = MAP[row]
-  if (col < 0 || col >= r.length) return false
-  return r[col] !== '.'
+function pxRect(g, x, y, w, h, color, alpha = 1) {
+  g.rect(Math.round(x), Math.round(y), Math.round(w), Math.round(h))
+  g.fill({ color, alpha })
 }
 
-function drawCorgi(g, px) {
+function drawPlus(g, x, y, s, color) {
+  pxRect(g, x + s, y, s, s * 3, color)
+  pxRect(g, x, y + s, s * 3, s, color)
+}
+
+function drawStage(g, width, height, unit) {
   g.clear()
-  // Fill pixels
-  for (let row = 0; row < MAP.length; row++) {
-    for (let col = 0; col < MAP[row].length; col++) {
-      const ch = MAP[row][col]
-      if (ch === '.') continue
-      const color = COLOR_MAP[ch]
-      if (color == null) continue
-      g.rect(col * px, row * px, px, px)
-      g.fill(color)
-    }
-  }
-  // Outline: 1px dark border on edges that border transparency
-  for (let row = 0; row < MAP.length; row++) {
-    for (let col = 0; col < MAP[row].length; col++) {
-      if (!isOpaque(row, col)) continue
-      // Top edge
-      if (!isOpaque(row - 1, col)) {
-        g.rect(col * px, row * px, px, 1); g.fill(C.outline)
-      }
-      // Bottom edge
-      if (!isOpaque(row + 1, col)) {
-        g.rect(col * px, row * px + px - 1, px, 1); g.fill(C.outline)
-      }
-      // Left edge
-      if (!isOpaque(row, col - 1)) {
-        g.rect(col * px, row * px, 1, px); g.fill(C.outline)
-      }
-      // Right edge
-      if (!isOpaque(row, col + 1)) {
-        g.rect(col * px + px - 1, row * px, 1, px); g.fill(C.outline)
+
+  pxRect(g, 0, 0, width, height, 0xFFE9BF)
+
+  for (let y = 0; y < height; y += unit) {
+    for (let x = 0; x < width; x += unit) {
+      if ((x / unit + y / unit) % 2 === 0) {
+        pxRect(g, x, y, unit, unit, 0xFFDDA8, 0.35)
       }
     }
   }
+
+  const counterY = height - unit * 2.2
+  pxRect(g, unit * 0.8, counterY, width - unit * 1.6, unit * 1.45, 0x2A1B2E)
+  pxRect(g, unit * 1.2, counterY + unit * 0.25, width - unit * 2.4, unit * 0.7, 0x6F3A21)
+  pxRect(g, unit * 1.2, counterY + unit * 0.95, width - unit * 2.4, unit * 0.25, 0xC36A2D)
+
+  pxRect(g, unit * 1.4, unit * 1.2, unit * 2.3, unit * 1.25, 0x2A1B2E)
+  pxRect(g, unit * 1.65, unit * 1.45, unit * 1.8, unit * 0.75, 0x8CA6B9)
+  pxRect(g, unit * 1.9, unit * 1.65, unit * 0.34, unit * 0.18, 0xF7F1D7)
+  pxRect(g, width - unit * 3.7, unit * 1.2, unit * 2.3, unit * 1.25, 0x2A1B2E)
+  pxRect(g, width - unit * 3.45, unit * 1.45, unit * 1.8, unit * 0.75, 0x8CA6B9)
+  pxRect(g, width - unit * 2.25, unit * 1.62, unit * 0.34, unit * 0.2, 0xF7F1D7)
 }
 
-function drawThoughtBubble(g, px, dotCount) {
+function drawStateFx(g, state, elapsed, width, height, unit) {
   g.clear()
-  // Tail dots
-  g.circle(6 * px, -0.8 * px, px * 0.3); g.fill(C.cream)
-  g.stroke({ color: C.outline, width: 1 })
-  g.circle(7 * px, -1.8 * px, px * 0.45); g.fill(C.cream)
-  g.stroke({ color: C.outline, width: 1 })
-  // Bubble
-  g.roundRect(5 * px, -5.5 * px, 6 * px, 3 * px, px * 0.5)
-  g.fill(C.white)
-  g.stroke({ color: C.outline, width: 1.5 })
-  // Animated dots
-  for (let d = 0; d < 3; d++) {
-    g.circle((6.5 + d * 1.5) * px, -4 * px, px * 0.28)
-    g.fill({ color: C.darkBrown, alpha: d < dotCount ? 1 : 0.2 })
+  const wobble = Math.sin(elapsed * 5)
+
+  if (state === 'thinking' || state === 'reading') {
+    const x = width - unit * 4.6
+    const y = unit * 1.4 + Math.sin(elapsed * 2) * unit * 0.12
+    pxRect(g, x, y, unit * 2.5, unit * 1.25, 0xFFFFFF)
+    pxRect(g, x, y, unit * 2.5, unit * 1.25, 0x2A1B2E, 0.1)
+    pxRect(g, x + unit * 0.25, y + unit * 0.3, unit * 0.4, unit * 0.18, 0x2A1B2E)
+    pxRect(g, x + unit * 0.95, y + unit * 0.3, unit * 0.4, unit * 0.18, 0x2A1B2E)
+    pxRect(g, x + unit * 1.65, y + unit * 0.3, unit * 0.4, unit * 0.18, 0x2A1B2E)
   }
-}
 
-function drawGlasses(g, px) {
-  g.clear()
-  // Left lens — over left eye area (cols 3-4, row 5)
-  g.roundRect(2.8 * px, 4.8 * px, 2.2 * px, 1.6 * px, 2)
-  g.fill({ color: C.white, alpha: 0.35 })
-  g.stroke({ color: C.darkBrown, width: 1 })
-  // Right lens — over right eye area (cols 11-12, row 5)
-  g.roundRect(10.8 * px, 4.8 * px, 2.2 * px, 1.6 * px, 2)
-  g.fill({ color: C.white, alpha: 0.35 })
-  g.stroke({ color: C.darkBrown, width: 1 })
-  // Bridge connecting them
-  g.moveTo(5 * px, 5.6 * px); g.lineTo(10.8 * px, 5.6 * px)
-  g.stroke({ color: C.darkBrown, width: 1 })
-}
-
-function drawCup(g, px) {
-  g.clear()
-  const bw = 3 * px
-  const bh = 2.5 * px
-  // Body
-  g.rect(0, 0, bw, bh); g.fill(C.darkBrown)
-  g.rect(px * 0.25, px * 0.25, bw - px * 0.5, bh - px * 0.25); g.fill(0x7B4F35)
-  // Handle
-  g.roundRect(bw, px * 0.4, px * 0.8, px * 1.6, 3)
-  g.fill({ color: C.darkBrown, alpha: 0 })
-  g.stroke({ color: C.darkBrown, width: 1.5 })
-  // Steam wisps
-  for (let i = 0; i < 3; i++) {
-    g.rect((0.4 + i * 0.9) * px, -px * 1.2, px * 0.25, px * 0.8)
-    g.fill({ color: C.cream, alpha: 0.7 })
+  if (state === 'excited') {
+    drawPlus(g, unit * 1.4, unit * 2.2 + wobble * 2, unit * 0.28, 0xF2B84B)
+    drawPlus(g, width - unit * 2.4, unit * 2.8 - wobble * 2, unit * 0.24, 0xF2B84B)
+    drawPlus(g, width - unit * 4.1, unit * 1.5, unit * 0.2, 0xF7F1D7)
   }
-}
 
-function drawSparkle(g, x, y, r, alpha) {
-  g.clear()
-  g.alpha = alpha
-  const points = 4
-  for (let i = 0; i < points; i++) {
-    const angle = (i / points) * Math.PI * 2
-    g.moveTo(x, y)
-    g.lineTo(x + Math.cos(angle) * r, y + Math.sin(angle) * r)
-    g.stroke({ color: 0xFFD700, width: 2 })
+  if (state === 'sleepy') {
+    const zX = width - unit * 4
+    const zY = unit * 1.7 - (elapsed % 1.5) * unit
+    pxRect(g, zX, zY, unit * 0.8, unit * 0.18, 0x2A1B2E, 0.8)
+    pxRect(g, zX + unit * 0.48, zY + unit * 0.18, unit * 0.18, unit * 0.18, 0x2A1B2E, 0.8)
+    pxRect(g, zX, zY + unit * 0.36, unit * 0.8, unit * 0.18, 0x2A1B2E, 0.8)
   }
-  g.circle(x, y, r * 0.2); g.fill(0xFFFFAA)
-}
 
-function drawSleepyEyes(g, px) {
-  g.clear()
-  // Half-lid over left eye (cols 2-4 area, row 5)
-  g.rect(2.8 * px, 5 * px, 2.5 * px, px * 0.55); g.fill(C.orange)
-  // Half-lid over right eye (cols 10-12 area, row 5)
-  g.rect(10.8 * px, 5 * px, 2.5 * px, px * 0.55); g.fill(C.orange)
-  // Bottom lash lines
-  g.rect(2.8 * px, 5 * px + px * 0.55, 2.5 * px, 1); g.fill(C.darkBrown)
-  g.rect(10.8 * px, 5 * px + px * 0.55, 2.5 * px, 1); g.fill(C.darkBrown)
+  if (state === 'serving') {
+    const steamX = width - unit * 3.25
+    const steamY = height - unit * 5.5
+    for (let i = 0; i < 3; i++) {
+      pxRect(g, steamX + i * unit * 0.32, steamY - ((elapsed * 20 + i * 7) % 16), unit * 0.13, unit * 0.45, 0xF7F1D7, 0.8)
+    }
+  }
 }
 
 export default function PixelCorgi({ state = 'idle', size = 256 }) {
   const containerRef = useRef(null)
   const stateRef = useRef(state)
-  stateRef.current = state
+
+  useEffect(() => {
+    stateRef.current = state
+  }, [state])
 
   useEffect(() => {
     let destroyed = false
     let pixiApp
-    let initDone = false
+    let ticker
 
     async function init() {
-      const px = Math.max(1, Math.floor(size / 16))
-      const cw = px * 16 + px * 4   // 2px padding each side
-      const ch = px * 16 + px * 8   // top/bottom padding for overlays
+      const stageWidth = Math.round(size * 1.42)
+      const stageHeight = Math.round(size * 1.18)
+      const unit = Math.max(6, Math.round(size / 18))
+      const resolution = Math.min(window.devicePixelRatio || 1, 2)
 
       const app = new Application()
       await app.init({
-        width: cw,
-        height: ch,
+        width: stageWidth,
+        height: stageHeight,
         backgroundAlpha: 0,
         antialias: false,
-        resolution: 1,
-        resizeTo: undefined,
+        resolution,
       })
 
-      // React StrictMode may destroy before init completes
       if (destroyed) {
-        try { app.destroy(true) } catch (_) {}
+        try { app.destroy(true) } catch (error) { console.warn('Pixi destroy failed', error) }
         return
       }
 
       pixiApp = app
-      initDone = true
-
-      const canvas = pixiApp.canvas
+      const canvas = app.canvas
+      canvas.style.width = `${stageWidth}px`
+      canvas.style.height = `${stageHeight}px`
+      canvas.style.display = 'block'
       canvas.style.imageRendering = 'pixelated'
       canvas.style.imageRendering = 'crisp-edges'
-      canvas.style.display = 'block'
+
       if (containerRef.current) {
         containerRef.current.innerHTML = ''
         containerRef.current.appendChild(canvas)
       }
 
-      // Stage root — corgi sits at top-left after the padding offset
+      const textures = {}
+      await Promise.all(Object.entries(SPRITES).map(async ([key, url]) => {
+        const texture = await Assets.load(url)
+        if (texture?.source) texture.source.scaleMode = 'nearest'
+        textures[key] = texture
+      }))
+
+      if (destroyed) {
+        try { app.destroy(true) } catch (error) { console.warn('Pixi destroy failed', error) }
+        return
+      }
+
+      const stageG = new Graphics()
+      const fxG = new Graphics()
       const root = new Container()
-      root.x = px * 2
-      root.y = px * 4    // leave room above for thought bubble
-      pixiApp.stage.addChild(root)
+      const current = normalizeState(stateRef.current)
+      const mascot = new Sprite(textures[current])
 
-      // --- Corgi body ---
-      const corgiG = new Graphics()
-      drawCorgi(corgiG, px)
-      root.addChild(corgiG)
+      drawStage(stageG, stageWidth, stageHeight, unit)
+      mascot.anchor.set(0.5, 1)
+      mascot.width = size
+      mascot.height = size
+      mascot.x = stageWidth / 2
+      mascot.y = stageHeight - unit * 1.55
 
-      // --- Overlay layers ---
-      const thoughtG   = new Graphics()
-      const glassesG   = new Graphics()
-      const sleepyG    = new Graphics()
-      const cupG       = new Graphics()
-
-      root.addChild(thoughtG)
-      root.addChild(glassesG)
-      root.addChild(sleepyG)
-      root.addChild(cupG)
-
-      // Sparkle pool
-      const SPARKLE_POSITIONS = [
-        [-2 * px, 3 * px], [18 * px, 3 * px],
-        [-3 * px, 8 * px], [17 * px, 9 * px],
-        [1 * px, -1 * px], [14 * px, -1 * px],
-      ]
-      const sparkleGs = SPARKLE_POSITIONS.map(() => {
-        const sg = new Graphics()
-        root.addChild(sg)
-        return sg
-      })
-
-      // ZZZ texts
-      const zzzItems = [
-        { text: 'z',  size: px * 1.2, bx: 13 * px, phase: 0 },
-        { text: 'z',  size: px * 1.5, bx: 14 * px, phase: 1.5 },
-        { text: 'zz', size: px * 0.9, bx: 12 * px, phase: 3.0 },
-      ].map(({ text, size: fs, bx, phase }) => {
-        const t = new Text({
-          text,
-          style: new TextStyle({ fontFamily: 'monospace', fontSize: fs, fill: 0x7DB87D, fontWeight: 'bold' }),
-        })
-        t.alpha = 0
-        root.addChild(t)
-        return { t, bx, phase }
-      })
+      root.addChild(mascot)
+      app.stage.addChild(stageG)
+      app.stage.addChild(root)
+      app.stage.addChild(fxG)
 
       let elapsed = 0
-      let cupTargetX = 18 * px
-      let cupCurrentX = 18 * px
+      let lastState = current
 
-      pixiApp.ticker.add((ticker) => {
-        elapsed += ticker.deltaMS / 1000
-        const s = stateRef.current
+      ticker = (frame) => {
+        elapsed += frame.deltaMS / 1000
+        const nextState = normalizeState(stateRef.current)
 
-        // Reset transforms each tick
+        if (nextState !== lastState) {
+          mascot.texture = textures[nextState]
+          lastState = nextState
+        }
+
+        root.x = 0
+        root.y = 0
         root.rotation = 0
         root.pivot.set(0, 0)
-        root.x = px * 2
-        root.y = px * 4
-        root.scale.set(1, 1)
+        mascot.x = stageWidth / 2
+        mascot.y = stageHeight - unit * 1.55
+        mascot.scale.set(size / mascot.texture.width, size / mascot.texture.height)
 
-        // Clear overlays
-        thoughtG.clear()
-        glassesG.clear()
-        sleepyG.clear()
-        for (const sg of sparkleGs) sg.clear()
-        for (const zz of zzzItems) zz.t.alpha = 0
-
-        // ---- idle ----
-        if (s === 'idle') {
-          root.y = px * 4 + Math.sin(elapsed * 1.3) * px * 0.5
+        if (nextState === 'idle') {
+          root.y = Math.sin(elapsed * 1.8) * unit * 0.12
+        }
+        if (nextState === 'listening') {
+          root.pivot.set(stageWidth / 2, stageHeight * 0.54)
+          root.x = stageWidth / 2
+          root.y = stageHeight * 0.54
+          root.rotation = Math.sin(elapsed * 1.8) * 0.045
+        }
+        if (nextState === 'thinking' || nextState === 'reading') {
+          root.y = Math.sin(elapsed * 2.2) * unit * 0.08
+        }
+        if (nextState === 'excited') {
+          root.y = -Math.abs(Math.sin(elapsed * 8)) * unit * 0.95
+        }
+        if (nextState === 'serving') {
+          root.x = Math.sin(elapsed * 2) * unit * 0.15
+        }
+        if (nextState === 'sleepy') {
+          root.pivot.set(stageWidth / 2, stageHeight * 0.72)
+          root.x = stageWidth / 2
+          root.y = stageHeight * 0.72 + Math.sin(elapsed * 1.1) * unit * 0.08
+          root.rotation = Math.sin(elapsed * 0.8) * 0.025
         }
 
-        // ---- listening ----
-        if (s === 'listening') {
-          // Rotate around center of head
-          const pivotX = 8 * px
-          const pivotY = 5 * px
-          root.pivot.set(pivotX, pivotY)
-          root.x = px * 2 + pivotX
-          root.y = px * 4 + pivotY + Math.sin(elapsed * 1.5) * px * 0.3
-          root.rotation = -0.10
-        }
+        drawStateFx(fxG, nextState, elapsed, stageWidth, stageHeight, unit)
+      }
 
-        // ---- thinking ----
-        if (s === 'thinking') {
-          root.y = px * 4
-          const dotCount = Math.floor(elapsed * 2) % 4
-          drawThoughtBubble(thoughtG, px, dotCount)
-        }
-
-        // ---- excited ----
-        if (s === 'excited') {
-          const hop = Math.abs(Math.sin(elapsed * 6)) * px * 4
-          root.y = px * 4 - hop
-          const squashX = 1 + Math.sin(elapsed * 6) * 0.07
-          root.scale.set(squashX, 2 - squashX)
-          // Sparkles
-          const sparklePhases = SPARKLE_POSITIONS.map((_, i) => (elapsed * 3 + i * 1.1) % (Math.PI * 2))
-          sparklePhases.forEach((phase, i) => {
-            const a = (Math.sin(phase) + 1) / 2
-            const [sx, sy] = SPARKLE_POSITIONS[i]
-            drawSparkle(sparkleGs[i], sx, sy, px * (0.5 + a * 0.5), a)
-          })
-        }
-
-        // ---- serving ----
-        if (s === 'serving') {
-          root.y = px * 4 + Math.sin(elapsed * 1.0) * px * 0.3
-          cupTargetX = 16 * px
-          cupCurrentX += (cupTargetX - cupCurrentX) * 0.08
-          cupG.x = cupCurrentX
-          cupG.y = 10 * px
-          drawCup(cupG, px)
-        } else {
-          cupTargetX = 20 * px
-          cupCurrentX += (cupTargetX - cupCurrentX) * 0.12
-          cupG.clear()
-        }
-
-        // ---- sleepy ----
-        if (s === 'sleepy') {
-          root.y = px * 4 + Math.sin(elapsed * 0.5) * px * 0.4
-          root.rotation = Math.sin(elapsed * 0.4) * 0.04
-          root.pivot.set(8 * px, 8 * px)
-          root.x = px * 2 + 8 * px
-          root.y = px * 4 + 8 * px + Math.sin(elapsed * 0.5) * px * 0.4
-          drawSleepyEyes(sleepyG, px)
-          // ZZZ
-          for (const zz of zzzItems) {
-            const phase = (elapsed * 0.7 + zz.phase) % (Math.PI * 2)
-            const progress = phase / (Math.PI * 2)
-            zz.t.x = zz.bx + Math.sin(phase * 2) * px * 0.8
-            zz.t.y = px * 2 - progress * px * 4
-            zz.t.alpha = Math.max(0, Math.sin(progress * Math.PI))
-          }
-        }
-
-        // ---- reading ----
-        if (s === 'reading') {
-          root.y = px * 4 + Math.sin(elapsed * 0.8) * px * 0.25
-          drawGlasses(glassesG, px)
-        }
-      })
+      app.ticker.add(ticker)
     }
 
     init().catch(console.error)
 
     return () => {
       destroyed = true
-      if (pixiApp && initDone) {
-        try { pixiApp.destroy(true) } catch (_) {}
+      if (pixiApp && ticker) pixiApp.ticker.remove(ticker)
+      if (pixiApp) {
+        try { pixiApp.destroy(true) } catch (error) { console.warn('Pixi destroy failed', error) }
         pixiApp = null
       }
     }
@@ -371,7 +240,9 @@ export default function PixelCorgi({ state = 'idle', size = 256 }) {
   return (
     <div
       ref={containerRef}
-      style={{ display: 'inline-block', lineHeight: 0, userSelect: 'none' }}
+      className="pixel-corgi-stage"
+      aria-label={`Corgi mascot is ${normalizeState(state)}`}
+      role="img"
     />
   )
 }
