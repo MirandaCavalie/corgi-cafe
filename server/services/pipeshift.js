@@ -47,7 +47,7 @@ async function callOpenAICompatible(assembledContext, userMessage, { apiKey, bas
     body: JSON.stringify({
       model,
       temperature: 0.7,
-      max_tokens:  800,
+      max_tokens:  16384,
       messages: [
         { role: 'system', content: assembledContext },
         { role: 'user',   content: userMessage },
@@ -102,7 +102,7 @@ async function callAnthropic(assembledContext, userMessage) {
     },
     body: JSON.stringify({
       model,
-      max_tokens: 1024,
+      max_tokens: 16384,
       system:     assembledContext,
       messages:   [{ role: 'user', content: userMessage }],
     }),
