@@ -1,62 +1,95 @@
-import OpenAI from 'openai'
+const FALLBACK = {
+  message: "Woof... my brain glitched. Try again?",
+  corgiState: 'sleepy',
+  drinkRecommendation: null,
+  contextInsights: null,
+  memoryUpdate: null,
+  proactiveNudge: null,
+  crossSessionReference: null,
+}
 
-// Pipeshift serves long-context models via OpenAI-compatible API
-// Falls back to OpenAI if PIPESHIFT_API_KEY is not set
-const isPipeshift = !!process.env.PIPESHIFT_API_KEY
+export async function callLLM(assembledContext, userMessage) {
+  let raw
 
-const client = new OpenAI({
-  apiKey: isPipeshift ? process.env.PIPESHIFT_API_KEY : process.env.OPENAI_API_KEY,
-  baseURL: isPipeshift
-    ? (process.env.PIPESHIFT_BASE_URL || 'https://api.pipeshift.ai/v1')
-    : undefined,
-})
-
-// Pipeshift long-context model; falls back to gpt-4o-mini for demo
-const MODEL = isPipeshift
-  ? (process.env.PIPESHIFT_MODEL || 'kimi-k2-0711-preview')
-  : 'gpt-4o-mini'
-
-export async function chat(systemPrompt, userMessage, fullContext = '') {
-  const messages = [
-    { role: 'system', content: systemPrompt },
-  ]
-
-  if (fullContext) {
-    messages.push({
-      role: 'user',
-      content: `[FULL CONTEXT — user memory, history, and document if any]\n\n${fullContext}\n\n[END CONTEXT]`,
+  if (process.env.ANTHROPIC_API_KEY) {
+    raw = await callAnthropic(assembledContext, userMessage)
+  } else if (process.env.PIPESHIFT_API_KEY) {
+    raw = await callOpenAICompatible(assembledContext, userMessage, {
+      apiKey:  process.env.PIPESHIFT_API_KEY,
+      baseUrl: process.env.PIPESHIFT_BASE_URL || 'https://api.pipeshift.com/api/v0/chat/completions',
+      model:   process.env.PIPESHIFT_MODEL    || 'moonshotai/Kimi-K2.6',
     })
-    messages.push({
-      role: 'assistant',
-      content: 'Got it! I have full context loaded. Ready to chat.',
+  } else if (process.env.OPENAI_API_KEY) {
+    raw = await callOpenAICompatible(assembledContext, userMessage, {
+      apiKey:  process.env.OPENAI_API_KEY,
+      baseUrl: 'https://api.openai.com/v1/chat/completions',
+      model:   'gpt-4o-mini',
     })
+  } else {
+    throw new Error('No API key found. Set ANTHROPIC_API_KEY, PIPESHIFT_API_KEY, or OPENAI_API_KEY in .env')
   }
 
-  messages.push({ role: 'user', content: userMessage })
-
-  const response = await client.chat.completions.create({
-    model: MODEL,
-    messages,
-    temperature: 0.8,
-    max_tokens: 600,
-  })
-
-  const raw = response.choices[0].message.content.trim()
-
-  // Parse JSON response
+  const cleaned = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
   try {
-    // Strip markdown code blocks if present
-    const cleaned = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
     return JSON.parse(cleaned)
   } catch {
-    // Fallback: wrap plain text in expected structure
-    return {
-      message: raw.slice(0, 300),
-      corgiState: 'idle',
-      drinkRecommendation: null,
-      contextInsights: null,
-      memoryUpdate: null,
-      proactiveNudge: null,
-    }
+    return { ...FALLBACK, message: raw.slice(0, 300) }
   }
+}
+
+async function callAnthropic(assembledContext, userMessage) {
+  const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514'
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type':    'application/json',
+      'x-api-key':       process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 1024,
+      system: assembledContext,
+      messages: [{ role: 'user', content: userMessage }],
+    }),
+  })
+
+  const data = await response.json()
+
+  if (!response.ok || data.error) {
+    console.error('Anthropic API error:', data.error ?? response.status)
+    return JSON.stringify(FALLBACK)
+  }
+
+  const block = data.content?.find(b => b.type === 'text')
+  return block?.text ?? JSON.stringify(FALLBACK)
+}
+
+async function callOpenAICompatible(assembledContext, userMessage, { apiKey, baseUrl, model }) {
+  const response = await fetch(baseUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.7,
+      max_tokens:  800,
+      messages: [
+        { role: 'system', content: assembledContext },
+        { role: 'user',   content: userMessage },
+      ],
+    }),
+  })
+
+  const data = await response.json()
+
+  if (!response.ok || data.error) {
+    console.error('OpenAI-compatible API error:', data.error ?? response.status)
+    return JSON.stringify(FALLBACK)
+  }
+
+  return data.choices?.[0]?.message?.content ?? JSON.stringify(FALLBACK)
 }

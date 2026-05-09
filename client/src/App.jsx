@@ -4,6 +4,7 @@ import PixelCorgi from './components/PixelCorgi'
 import CorgiSpeechBubble from './components/CorgiSpeechBubble'
 import ChatInterface from './components/ChatInterface'
 import ContextCards from './components/ContextCards'
+import ThinkingDrawer from './components/ThinkingDrawer'
 import { useCorgiState } from './hooks/useCorgiState'
 import { useMemory } from './hooks/useMemory'
 import { api } from './utils/api'
@@ -24,6 +25,9 @@ export default function App() {
   const [isTyping, setIsTyping] = useState(false)
   const [messages, setMessages] = useState([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isThinking, setIsThinking] = useState(false)
+  const [meta, setMeta] = useState(null)
+  const [crossSessionReference, setCrossSessionReference] = useState(null)
   const [recommendation, setRecommendation] = useState(null)
   const [workContext, setWorkContext] = useState([])
   const [showHistory, setShowHistory] = useState(false)
@@ -57,6 +61,9 @@ export default function App() {
     setMessages(prev => [...prev, { role: 'user', content: text }])
     setIsLoading(true)
     setIsTyping(true)
+    setIsThinking(true)
+    setMeta(null)
+    setCrossSessionReference(null)
     setSpeechText('')
     setCorgiState('thinking')
 
@@ -70,6 +77,9 @@ export default function App() {
       setCorgiState(newState)
       setSpeechText(result.message)
       setIsTyping(false)
+      setIsThinking(false)
+      if (result.meta) setMeta(result.meta)
+      if (result.crossSessionReference) setCrossSessionReference(result.crossSessionReference)
 
       if (result.drinkRecommendation) {
         setRecommendation(result.drinkRecommendation)
@@ -100,6 +110,7 @@ export default function App() {
       setCorgiState('idle')
       setSpeechText("Woof... something went wrong. Give me a sec and try again? 🐾")
       setIsTyping(false)
+      setIsThinking(false)
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: "Woof... something went wrong. Try again?"
@@ -116,6 +127,9 @@ export default function App() {
     }])
     setIsLoading(true)
     setIsTyping(true)
+    setIsThinking(true)
+    setMeta(null)
+    setCrossSessionReference(null)
     setSpeechText('')
     setCorgiState('reading')
 
@@ -125,6 +139,9 @@ export default function App() {
       setCorgiState(result.corgiState || 'idle')
       setSpeechText(result.message)
       setIsTyping(false)
+      setIsThinking(false)
+      if (result.meta) setMeta(result.meta)
+      if (result.crossSessionReference) setCrossSessionReference(result.crossSessionReference)
 
       if (result.drinkRecommendation) setRecommendation(result.drinkRecommendation)
       if (result.contextInsights?.length > 0) {
@@ -137,13 +154,14 @@ export default function App() {
       setCorgiState('idle')
       setSpeechText("Hmm, I had trouble reading that doc. Try pasting the text directly?")
       setIsTyping(false)
+      setIsThinking(false)
     } finally {
       setIsLoading(false)
     }
   }
 
   const memoryStats = getMemoryStats()
-  const visitHistory = memory?.visitHistory || []
+  const visitHistory = memory?.episodic ?? memory?.visitHistory ?? []
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--cream)' }}>
@@ -154,7 +172,12 @@ export default function App() {
             <span className="text-xl">🐾</span>
             <span className="font-pixel text-[#4A3228] text-xs">CORGI MEMORY</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            {meta?.tokenEstimate > 0 && (
+              <span className="text-xs font-pixel text-[#7DB87D]">
+                {meta.tokenEstimate >= 1000 ? `${Math.round(meta.tokenEstimate / 1000)}K` : meta.tokenEstimate} tokens
+              </span>
+            )}
             <button
               onClick={() => setShowHistory(h => !h)}
               className="text-xs text-[#7A5A4A] hover:text-[#4A3228] px-2 py-1 rounded border-2 border-transparent hover:border-[#4A3228] transition-all font-medium"
@@ -197,11 +220,21 @@ export default function App() {
           </div>
         </div>
 
+        {/* Thinking Drawer */}
+        <ThinkingDrawer
+          isThinking={isThinking}
+          toolsUsed={meta?.toolsUsed ?? []}
+          tokenEstimate={meta?.tokenEstimate ?? 0}
+          intent={meta?.intent}
+          totalTimeMs={meta?.totalTimeMs}
+        />
+
         {/* Context Cards */}
         <ContextCards
           recommendation={recommendation}
           workContext={workContext}
           memoryStats={memoryStats}
+          crossSessionReference={crossSessionReference}
         />
 
         {/* Chat */}

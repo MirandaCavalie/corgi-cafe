@@ -1,33 +1,17 @@
 import { Router } from 'express'
-import { chat } from '../services/pipeshift.js'
-import { getUser, addVisit } from '../services/hydradb.js'
-import { CORGI_SYSTEM_PROMPT } from '../prompts/corgiPersona.js'
-import { buildFullContext } from '../services/drinkEngine.js'
+import { agentPipeline } from './chat.js'
 
 const router = Router()
 
 router.post('/', async (req, res) => {
   try {
-    const { userId, name, content, type } = req.body
+    const { userId = 'demo-user', name, content } = req.body
 
     if (!userId || !content) {
       return res.status(400).json({ error: 'userId and content required' })
     }
 
-    const userProfile = await getUser(userId)
-    const fullContext = buildFullContext(userProfile, { name: name || 'Document', content })
-
-    const message = `I just shared a document called "${name || 'Document'}". Please read it, give me the key insights, tell me what kind of work vibe it has, and recommend a drink to pair with this session.`
-
-    const result = await chat(CORGI_SYSTEM_PROMPT, message, fullContext)
-
-    await addVisit(userId, {
-      mood: result.memoryUpdate?.mood || 'working',
-      drinkOrdered: result.drinkRecommendation?.name || null,
-      conversationSummary: `Analyzed document: ${name || 'Document'}`,
-      documentsDiscussed: [{ title: name || 'Document', summary: (result.contextInsights || []).join('; ') }],
-    })
-
+    const result = await agentPipeline(userId, `Analyze this document: "${name || 'Document'}"`, [], content)
     res.json(result)
   } catch (err) {
     console.error('Upload error:', err)
@@ -38,6 +22,8 @@ router.post('/', async (req, res) => {
       contextInsights: null,
       memoryUpdate: null,
       proactiveNudge: null,
+      crossSessionReference: null,
+      meta: { intent: 'upload', toolsUsed: [], tokenEstimate: 0, totalTimeMs: 0 },
     })
   }
 })

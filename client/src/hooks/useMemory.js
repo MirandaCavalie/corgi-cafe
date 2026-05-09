@@ -26,16 +26,25 @@ export function useMemory(userId = DEFAULT_USER_ID) {
 
   const getMemoryStats = () => {
     if (!memory) return null
-    const visits = memory.visitHistory || []
-    const favDrinks = memory.preferences?.favoriteDrinks || []
+    // Support both new schema (episodic) and old schema (visitHistory)
+    const visits = memory.episodic ?? memory.visitHistory ?? []
+    const favDrinks = memory.semantic?.drinkPreferences?.explicit
+      ?? memory.preferences?.favoriteDrinks
+      ?? []
     const lastVisit = visits.length > 1
       ? new Date(visits[visits.length - 2]?.timestamp).toLocaleDateString()
       : null
+    const moodTrend = memory.semantic?.moodPatterns?.[0]
+      ?? memory.personalContext?.moodTrend
+      ?? null
+    const favDrink = memory.semantic?.drinkPreferences?.inferred?.[0]?.replace('prefers: ', '')
+      ?? favDrinks[0]
+      ?? null
 
     return {
       visitCount: visits.length,
-      favoriteDrink: favDrinks[0] || null,
-      moodTrend: memory.personalContext?.moodTrend || null,
+      favoriteDrink: favDrink,
+      moodTrend,
       lastVisit,
     }
   }

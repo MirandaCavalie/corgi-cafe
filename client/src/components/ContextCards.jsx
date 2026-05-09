@@ -1,6 +1,6 @@
 import DrinkCard from './DrinkCard'
 
-export default function ContextCards({ recommendation, workContext, memoryStats }) {
+export default function ContextCards({ recommendation, workContext, memoryStats, crossSessionReference }) {
   return (
     <div className="w-full overflow-x-auto">
       <div className="flex gap-3 pb-2 min-w-max mx-auto justify-center px-2">
@@ -51,10 +51,20 @@ export default function ContextCards({ recommendation, workContext, memoryStats 
                   Last here: {memoryStats.lastVisit}
                 </div>
               )}
+              {crossSessionReference && (
+                <div className="text-xs text-[#7DB87D] italic mt-2 border-t border-purple-100 pt-2">
+                  "{crossSessionReference}"
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-xs text-[#C8A882] leading-relaxed">
               Your memory builds as we chat!
+              {crossSessionReference && (
+                <div className="text-xs text-[#7DB87D] italic mt-2">
+                  "{crossSessionReference}"
+                </div>
+              )}
             </div>
           )}
         </div>
