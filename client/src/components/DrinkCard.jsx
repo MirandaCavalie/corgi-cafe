@@ -40,7 +40,10 @@ export default function DrinkCard({ recommendation }) {
   const emoji = DRINK_EMOJIS[type]
 
   return (
-    <div className={`context-card pixel-border-sm bg-gradient-to-br ${colorClass} rounded p-4 min-w-[160px]`}>
+    <div
+      className={`context-card pixel-border-sm bg-gradient-to-br ${colorClass} rounded p-4 min-w-[160px]`}
+      aria-label={`${emoji} drink recommendation`}
+    >
       <div className="text-xs font-pixel text-[#4A3228] mb-3">☕ DRINK</div>
 
       <div className="flex justify-center mb-3">

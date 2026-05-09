@@ -4,33 +4,39 @@ export default function CorgiSpeechBubble({ text, isTyping = false }) {
   const [displayed, setDisplayed] = useState('')
   const [showCursor, setShowCursor] = useState(true)
   const intervalRef = useRef(null)
-  const prevTextRef = useRef('')
+  const cursorTimerRef = useRef(null)
+  const resetTimerRef = useRef(null)
 
   useEffect(() => {
+    clearInterval(intervalRef.current)
+    clearTimeout(cursorTimerRef.current)
+    clearTimeout(resetTimerRef.current)
+
     if (!text) {
-      setDisplayed('')
-      return
+      resetTimerRef.current = setTimeout(() => setDisplayed(''), 0)
+      return () => clearTimeout(resetTimerRef.current)
     }
 
-    if (text === prevTextRef.current) return
-    prevTextRef.current = text
-
-    setDisplayed('')
-    setShowCursor(true)
+    resetTimerRef.current = setTimeout(() => {
+      setDisplayed('')
+      setShowCursor(true)
+    }, 0)
 
     let i = 0
-    clearInterval(intervalRef.current)
-
     intervalRef.current = setInterval(() => {
       i++
       setDisplayed(text.slice(0, i))
       if (i >= text.length) {
         clearInterval(intervalRef.current)
-        setTimeout(() => setShowCursor(false), 1500)
+        cursorTimerRef.current = setTimeout(() => setShowCursor(false), 1500)
       }
     }, 22)
 
-    return () => clearInterval(intervalRef.current)
+    return () => {
+      clearInterval(intervalRef.current)
+      clearTimeout(cursorTimerRef.current)
+      clearTimeout(resetTimerRef.current)
+    }
   }, [text])
 
   if (!text && !isTyping) return null

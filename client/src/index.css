@@ -84,6 +84,265 @@ body {
 }
 
 /* Corgi animations */
+.corgi-mascot {
+  --corgi-render-height: clamp(210px, calc(var(--corgi-size) * 1.22), 320px);
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: min(80vw, calc(var(--corgi-render-height) * 0.95));
+  height: calc(var(--corgi-render-height) + 58px);
+  line-height: 0;
+  user-select: none;
+}
+
+.corgi-mascot__figure {
+  position: relative;
+  height: var(--corgi-render-height);
+  aspect-ratio: 701 / 1117;
+  filter: drop-shadow(0 12px 0 rgba(74, 50, 40, 0.14));
+  transform-origin: 50% 88%;
+  will-change: transform;
+}
+
+.corgi-mascot__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.corgi-mascot--idle .corgi-mascot__figure {
+  animation: corgi-mascot-idle 3.2s ease-in-out infinite;
+}
+
+.corgi-mascot--listening .corgi-mascot__figure {
+  animation: corgi-mascot-listening 2.1s ease-in-out infinite;
+}
+
+.corgi-mascot--thinking .corgi-mascot__figure {
+  animation: corgi-mascot-thinking 2.4s ease-in-out infinite;
+}
+
+.corgi-mascot--excited .corgi-mascot__figure {
+  animation: corgi-mascot-excited 0.58s ease-in-out infinite;
+}
+
+.corgi-mascot--serving .corgi-mascot__figure {
+  animation: corgi-mascot-serving 2s ease-in-out infinite;
+}
+
+.corgi-mascot--sleepy .corgi-mascot__figure {
+  animation: corgi-mascot-sleepy 3.4s ease-in-out infinite;
+  filter: drop-shadow(0 12px 0 rgba(74, 50, 40, 0.12)) saturate(0.82);
+}
+
+.corgi-mascot--reading .corgi-mascot__figure {
+  animation: corgi-mascot-reading 2.6s ease-in-out infinite;
+}
+
+.corgi-mascot__thought {
+  position: absolute;
+  top: 10px;
+  right: calc(50% - var(--corgi-render-height) * 0.34);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 72px;
+  height: 38px;
+  background: #FFFFFF;
+  border: 3px solid var(--espresso);
+  border-radius: 19px;
+  box-shadow: 3px 3px 0 var(--espresso);
+}
+
+.corgi-mascot__thought::before,
+.corgi-mascot__thought::after {
+  content: '';
+  position: absolute;
+  background: #FFFFFF;
+  border: 2px solid var(--espresso);
+  border-radius: 50%;
+}
+
+.corgi-mascot__thought::before {
+  right: 50px;
+  bottom: -14px;
+  width: 12px;
+  height: 12px;
+}
+
+.corgi-mascot__thought::after {
+  right: 62px;
+  bottom: -26px;
+  width: 8px;
+  height: 8px;
+}
+
+.corgi-mascot__thought span {
+  width: 7px;
+  height: 7px;
+  background: var(--espresso);
+  border-radius: 50%;
+  animation: corgi-mascot-dot 1.1s ease-in-out infinite;
+}
+
+.corgi-mascot__thought span:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.corgi-mascot__thought span:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+.corgi-mascot__sparkles {
+  position: absolute;
+  inset: 24px 6px 38px;
+  pointer-events: none;
+}
+
+.corgi-mascot__sparkles span {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  animation: corgi-mascot-sparkle 0.9s ease-in-out infinite;
+}
+
+.corgi-mascot__sparkles span::before,
+.corgi-mascot__sparkles span::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3px;
+  height: 100%;
+  background: #F5C842;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+}
+
+.corgi-mascot__sparkles span::after {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+.corgi-mascot__sparkles span:nth-child(1) { left: 6%; top: 26%; }
+.corgi-mascot__sparkles span:nth-child(2) { right: 4%; top: 18%; animation-delay: 0.15s; }
+.corgi-mascot__sparkles span:nth-child(3) { left: 16%; bottom: 24%; animation-delay: 0.3s; }
+.corgi-mascot__sparkles span:nth-child(4) { right: 12%; bottom: 34%; animation-delay: 0.45s; }
+
+.corgi-mascot__zzz {
+  position: absolute;
+  top: 16px;
+  right: calc(50% - var(--corgi-render-height) * 0.32);
+  width: 64px;
+  height: 72px;
+  color: var(--matcha);
+  font-family: 'Press Start 2P', monospace;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.corgi-mascot__zzz span {
+  position: absolute;
+  opacity: 0;
+  animation: corgi-mascot-zzz 2.4s ease-in-out infinite;
+}
+
+.corgi-mascot__zzz span:nth-child(1) { left: 4px; bottom: 10px; font-size: 13px; }
+.corgi-mascot__zzz span:nth-child(2) { left: 24px; bottom: 28px; font-size: 16px; animation-delay: 0.35s; }
+.corgi-mascot__zzz span:nth-child(3) { left: 8px; bottom: 48px; font-size: 11px; animation-delay: 0.7s; }
+
+.corgi-mascot__glasses {
+  position: absolute;
+  left: 29.5%;
+  top: 30.5%;
+  width: 41%;
+  height: 7.5%;
+  background: linear-gradient(
+    to right,
+    transparent 36%,
+    #2D1B0E 36%,
+    #2D1B0E 64%,
+    transparent 64%
+  ) center / 100% 2px no-repeat;
+  transform: rotate(-2deg);
+}
+
+.corgi-mascot__glasses::before,
+.corgi-mascot__glasses::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 34%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid #2D1B0E;
+  border-radius: 999px;
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.28);
+}
+
+.corgi-mascot__glasses::before {
+  left: 0;
+}
+
+.corgi-mascot__glasses::after {
+  right: 0;
+}
+
+@keyframes corgi-mascot-idle {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(4px) scale(1.015, 0.985); }
+}
+
+@keyframes corgi-mascot-listening {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(2px) rotate(5deg); }
+}
+
+@keyframes corgi-mascot-thinking {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(3px); }
+}
+
+@keyframes corgi-mascot-excited {
+  0%, 100% { transform: translateY(0) scale(1); }
+  45% { transform: translateY(-14px) scale(1.03, 0.97); }
+  70% { transform: translateY(2px) scale(0.99, 1.01); }
+}
+
+@keyframes corgi-mascot-serving {
+  0%, 100% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(5px) translateY(2px); }
+}
+
+@keyframes corgi-mascot-sleepy {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(5px) rotate(2deg); }
+}
+
+@keyframes corgi-mascot-reading {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(2px) rotate(-1deg); }
+}
+
+@keyframes corgi-mascot-dot {
+  0%, 100% { opacity: 0.25; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-2px); }
+}
+
+@keyframes corgi-mascot-sparkle {
+  0%, 100% { opacity: 0; transform: scale(0.35) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1) rotate(90deg); }
+}
+
+@keyframes corgi-mascot-zzz {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.72); }
+  45% { opacity: 1; }
+  100% { opacity: 0; transform: translate(12px, -24px) scale(1); }
+}
+
 @keyframes idle-breathe {
   0%, 100% { transform: scaleY(1) translateY(0); }
   50% { transform: scaleY(0.97) translateY(1px); }
