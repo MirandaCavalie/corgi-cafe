@@ -99,6 +99,36 @@ const DRINKS = {
   },
 }
 
+// Map every real-menu drink name to one of the existing sprites above so
+// recommendations always render something instead of the 'CUP' fallback.
+const SPRITE_ALIASES = {
+  // Hot black coffee
+  'Drip Coffee':    'Classic Drip Coffee',
+  'Mocha':          'Classic Drip Coffee',
+  'Cappuccino':     'Classic Drip Coffee',
+  'Cafe au Lait':   'Classic Drip Coffee',
+  'Espresso':       'Classic Drip Coffee',
+  'Hot Chocolate':  'Classic Drip Coffee',
+  // Cold black coffee
+  'Americano':      'Iced Americano',
+  'Cold Brew':      'Iced Americano',
+  'Brexspresso':    'Iced Americano',
+  'Qodo Code Brew': 'Iced Americano',
+  'Brew Daytona':   'Iced Americano',
+  // Milk-forward
+  'Latte':          'Oat Milk Latte',
+  // Matcha / tea
+  'Deel Speed':     'Iced Matcha Latte',
+  'Tea':            'Hot Matcha',
+  'Chai Latte':     'Hot Matcha',
+  // Smoothies
+  'The Sunset — Berry Glow':            'Berry Smoothie',
+  'The FiDi — Chocolate Peanut Butter': 'Protein Smoothie',
+  'The Ocean Beach — Blue Power Blend': 'Protein Smoothie',
+  'Hello World':                        'Protein Smoothie',
+  'Milk':                               'Protein Smoothie',
+}
+
 const PALETTE = {
   B: '#3D2B1F',
   W: '#FFFFFF',
@@ -128,7 +158,8 @@ function PixelDrinkRow({ row, size }) {
 }
 
 export default function PixelDrink({ name, size = 8 }) {
-  const drink = DRINKS[name]
+  const spriteName = DRINKS[name] ? name : SPRITE_ALIASES[name]
+  const drink = DRINKS[spriteName]
   if (!drink) {
     // Generic cup fallback
     return (

@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url'
 import chatRouter from './routes/chat.js'
 import memoryRouter from './routes/memory.js'
 import uploadRouter from './routes/upload.js'
-import { DRINK_MENU } from './prompts/corgiPersona.js'
+import { CORGI_MENU } from './prompts/corgiPersona.js'
 import { getActiveStorageLayer, getUser, saveUser } from './services/hydradb.js'
 
 config()
@@ -34,7 +34,7 @@ app.use('/api/upload', uploadRouter)
 app.use('/api/vibe-check', uploadRouter)
 
 app.get('/api/menu', (_, res) => {
-  res.json(DRINK_MENU)
+  res.json(CORGI_MENU)
 })
 
 function describeModel() {

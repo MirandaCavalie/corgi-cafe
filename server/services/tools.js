@@ -1,20 +1,24 @@
 import { getUser, saveUser } from './hydradb.js'
 import { getPersonalContext } from './thine.js'
+import { ALL_DRINKS, CORGI_MENU } from '../prompts/corgiPersona.js'
 
-const CAFFEINE_DRINKS = ['coffee', 'americano', 'latte', 'matcha', 'espresso']
+const CAFFEINE_DRINKS = ['coffee', 'americano', 'latte', 'cappuccino', 'mocha', 'espresso', 'cold brew', 'brexspresso', 'qodo', 'daytona', 'chai']
 const STRESS_KEYWORDS = ['deadline', 'presentation', 'interview', 'meeting', 'deploy', 'launch', 'need to', 'should', 'tomorrow', 'bug', 'broken', 'failing', 'crash']
 
-const FULL_MENU = [
-  { name: 'Classic Drip Coffee',  type: 'coffee',   caffeine: 'high',   energy: 'high',   vibes: ['focused', 'grinding', 'rough-morning', 'stressed', 'monday'], temp: 'hot' },
-  { name: 'Iced Americano',       type: 'coffee',   caffeine: 'high',   energy: 'high',   vibes: ['intense', 'debugging', 'deadline', 'early-morning'],          temp: 'cold' },
-  { name: 'Oat Milk Latte',       type: 'coffee',   caffeine: 'medium', energy: 'medium', vibes: ['cozy', 'planning', 'casual', 'reflective', 'morning'],        temp: 'hot' },
-  { name: 'Iced Oat Milk Latte',  type: 'coffee',   caffeine: 'medium', energy: 'medium', vibes: ['afternoon', 'social', 'creative'],                            temp: 'cold' },
-  { name: 'Iced Matcha Latte',    type: 'matcha',   caffeine: 'medium', energy: 'medium', vibes: ['calm-focus', 'deep-work', 'architecture', 'reading', 'portfolio'], temp: 'cold' },
-  { name: 'Hot Matcha',           type: 'matcha',   caffeine: 'medium', energy: 'medium', vibes: ['zen', 'morning-calm', 'reflective', 'writing'],               temp: 'hot' },
-  { name: 'Berry Smoothie',       type: 'smoothie', caffeine: 'none',   energy: 'low',    vibes: ['refreshed', 'break', 'relaxed', 'celebrating', 'friday'],     temp: 'cold' },
-  { name: 'Mango Smoothie',       type: 'smoothie', caffeine: 'none',   energy: 'low',    vibes: ['tropical-break', 'creative', 'light', 'casual'],              temp: 'cold' },
-  { name: 'Protein Smoothie',     type: 'smoothie', caffeine: 'none',   energy: 'medium', vibes: ['recovery', 'post-grind', 'lunch-skip', 'energized'],          temp: 'cold' },
-]
+const EXCLUSIVE_NAMES = new Set(CORGI_MENU.exclusiveDrinks.map(d => d.name))
+const SIGNATURE_SMOOTHIE_NAMES = new Set(CORGI_MENU.smoothies.map(d => d.name))
+const BLACK_COFFEE_NAMES = new Set(['Drip Coffee', 'Americano', 'Cold Brew', 'Espresso', 'Brexspresso', 'Qodo Code Brew', 'Brew Daytona'])
+
+// A drink contains dairy if it's a smoothie/latte/cappuccino/mocha/cafe au lait/
+// hot chocolate/milk OR its description mentions whole milk / yogurt.
+function containsDairy(drink) {
+  const desc = (drink.description ?? '').toLowerCase()
+  if (desc.includes('whole milk') || desc.includes('yogurt')) return true
+  if (drink.type === 'smoothie') return true
+  if (drink.type === 'milk' || drink.type === 'chocolate') return true
+  const milkyNames = ['Latte', 'Cappuccino', 'Mocha', 'Cafe au Lait', 'Chai Latte']
+  return milkyNames.includes(drink.name)
+}
 
 // Normalize user profile across both old and new memory schemas
 function normalizeProfile(user) {
@@ -221,6 +225,15 @@ export async function evaluateDrinkFit(userId, energyContext, currentMood = 'neu
   const rules    = semantic.proceduralRules ?? []
   const prefs    = semantic.preferences
 
+  const lactoseIntolerant = rules.some(r => {
+    const lower = r.toLowerCase()
+    return lower.includes('lactose') || (lower.includes('dairy') && lower.includes('never'))
+  })
+  const noCoffeeAfter2pm = rules.some(r => {
+    const lower = r.toLowerCase()
+    return lower.includes('coffee') && lower.includes('after 2pm')
+  })
+
   // Build a "vibe bag" from mood + documentVibe + time of day
   const vibeBag = new Set([
     currentMood?.toLowerCase().replace(/\s+/g, '-'),
@@ -229,29 +242,35 @@ export async function evaluateDrinkFit(userId, energyContext, currentMood = 'neu
     energyContext?.dayOfWeek === 'Friday' ? 'friday' : null,
   ].filter(Boolean))
 
+  const hour          = energyContext?.currentHour ?? 12
+  const energyLevel   = energyContext?.typicalEnergyAtThisHour ?? 'medium'
+  const caffeineToday = energyContext?.caffeineToday ?? 0
+
   // Score each drink
-  const scored = FULL_MENU.map(drink => {
+  const scored = ALL_DRINKS.map(drink => {
     let score = 0
 
     // Vibe match
-    for (const v of drink.vibes) {
+    for (const v of (drink.vibe ?? [])) {
       if (vibeBag.has(v)) score += 2
     }
 
     // Energy level match
-    const energyLevel = energyContext?.typicalEnergyAtThisHour ?? 'medium'
     if (drink.energy === 'high'   && ['high', 'medium-high'].includes(energyLevel)) score++
     if (drink.energy === 'medium' && ['medium', 'medium-high'].includes(energyLevel)) score++
     if (drink.energy === 'low'    && ['low'].includes(energyLevel)) score++
 
-    // Time-of-day temp fit
-    const hour = energyContext?.currentHour ?? 12
-    if (hour < 12 && drink.temp === 'hot')  score++
-    if (hour >= 14 && drink.temp === 'cold') score++
+    // Time-of-day temp fit (drink.temp may be 'hot', 'cold', 'hot/iced', or 'hot/cold')
+    const temp = drink.temp ?? ''
+    if (hour < 12  && temp.includes('hot'))  score++
+    if (hour >= 14 && (temp.includes('cold') || temp.includes('iced'))) score++
 
     // Caffeine penalty
-    const caffeineToday = energyContext?.caffeineToday ?? 0
     if (caffeineToday >= 3 && drink.type === 'coffee') score -= 3
+
+    // Exclusive-drinks boost — these are what makes Corgi Cafe special
+    if (EXCLUSIVE_NAMES.has(drink.name)) score += 1.5
+    if (SIGNATURE_SMOOTHIE_NAMES.has(drink.name)) score += 1
 
     // Preference boost
     if (prefs?.inferred?.some(p => p.toLowerCase().includes(drink.name.toLowerCase()))) score += 2
@@ -261,36 +280,40 @@ export async function evaluateDrinkFit(userId, energyContext, currentMood = 'neu
     }
 
     // Procedural rule exclusion
-    const excluded = rules.some(rule => {
-      const r = rule.toLowerCase()
-      return (r.includes('dairy') && ['Oat Milk Latte', 'Iced Oat Milk Latte'].includes(drink.name) && r.includes('never'))
-        || (r.includes('coffee') && hour >= 14 && drink.type === 'coffee' && r.includes('after 2pm'))
-    })
-    if (excluded) score = -99
+    if (lactoseIntolerant && containsDairy(drink)) score -= 5
+    if (noCoffeeAfter2pm  && hour >= 14 && drink.type === 'coffee') score = -99
 
     return { ...drink, score }
   })
     .filter(d => d.score > -99)
     .sort((a, b) => b.score - a.score)
 
-  const top   = scored[0]
-  const alts  = scored.slice(1, 3)
+  const top  = scored[0]
+  const alts = scored.slice(1, 3)
 
   const contraindications = []
-  if (energyContext?.caffeineToday >= 3) {
-    contraindications.push(`You've had ${energyContext.caffeineToday} caffeinated drinks today — maybe switch to a smoothie?`)
+  if (caffeineToday >= 3) {
+    contraindications.push(`You've had ${caffeineToday} caffeinated drinks today — maybe a smoothie or tea instead?`)
   }
   if (energyContext?.predictedCrashTime) {
     contraindications.push(`Coffee now might cause a crash at ${energyContext.predictedCrashTime}`)
   }
+  if (lactoseIntolerant && top && containsDairy(top) && !BLACK_COFFEE_NAMES.has(top.name)) {
+    contraindications.push(`${top.name} contains whole milk — ask for the oat-milk modifier, or grab a black-coffee option (Drip, Americano, Cold Brew, Espresso).`)
+  }
+  // Wire In suggestion when the user is flagging tired/low-energy
+  const tiredVibes = ['tired', 'sleepy', 'rough', 'low', 'drained', 'exhausted']
+  if (top?.type === 'coffee' && tiredVibes.some(v => vibeBag.has(v))) {
+    contraindications.push(`Looking extra drained — consider a Wire In 🔥 (extra espresso shot, +$2.50) on top.`)
+  }
 
   return {
     topRecommendation: {
-      name:       top?.name ?? 'Iced Matcha Latte',
+      name:       top?.name ?? 'Drip Coffee',
       confidence: Math.min(1, Math.max(0.5, (top?.score ?? 3) / 8)),
-      reason:     `Energy: ${top?.energy ?? 'medium'}, vibe: ${top?.vibes?.[0] ?? 'focused'}`,
+      reason:     `Energy: ${top?.energy ?? 'medium'}, vibe: ${top?.vibe?.[0] ?? 'focused'}`,
     },
-    alternatives:      alts.map(d => ({ name: d.name, reason: `Good for ${d.vibes[0]}` })),
+    alternatives:      alts.map(d => ({ name: d.name, reason: `Good for ${d.vibe?.[0] ?? d.type}` })),
     contraindications,
   }
 }
@@ -346,4 +369,4 @@ export async function updateMemory(userId, updates) {
   await saveUser(userId, user)
 }
 
-export { FULL_MENU }
+export { ALL_DRINKS, CORGI_MENU }

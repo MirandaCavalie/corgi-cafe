@@ -1,8 +1,8 @@
-import { DRINK_MENU } from '../prompts/corgiPersona.js'
+import { ALL_DRINKS } from '../prompts/corgiPersona.js'
 
 export function getMenuText() {
-  return DRINK_MENU.map(d =>
-    `- ${d.name} (${d.type}, energy: ${d.energy}, vibe: ${d.vibe}, ${d.temp})`
+  return ALL_DRINKS.map(d =>
+    `- ${d.name} (${d.type}, energy: ${d.energy}, vibe: ${(d.vibe ?? []).join('/')}, ${d.temp})`
   ).join('\n')
 }
 

@@ -1,15 +1,31 @@
 import PixelDrink from './PixelDrink'
 
+// Maps each menu drink to a visual category for the card's color theme.
 const DRINK_TYPES = {
-  'Classic Drip Coffee': 'coffee',
-  'Iced Americano': 'coffee',
-  'Oat Milk Latte': 'coffee',
-  'Iced Oat Milk Latte': 'coffee',
-  'Iced Matcha Latte': 'matcha',
-  'Hot Matcha': 'matcha',
-  'Berry Smoothie': 'smoothie',
-  'Mango Smoothie': 'smoothie',
-  'Protein Smoothie': 'smoothie',
+  // Coffees
+  'Mocha':         'coffee',
+  'Americano':     'coffee',
+  'Latte':         'coffee',
+  'Cappuccino':    'coffee',
+  'Drip Coffee':   'coffee',
+  'Cafe au Lait':  'coffee',
+  'Espresso':      'coffee',
+  'Cold Brew':     'coffee',
+  // Drinks
+  'Tea':           'matcha',
+  'Hot Chocolate': 'coffee',
+  'Chai Latte':    'matcha',
+  'Milk':          'smoothie',
+  // Exclusive drinks
+  'Brexspresso':    'coffee',
+  'Qodo Code Brew': 'coffee',
+  'Brew Daytona':   'coffee',
+  'Hello World':    'smoothie',
+  'Deel Speed':     'matcha',
+  // Signature smoothies
+  'The FiDi — Chocolate Peanut Butter': 'smoothie',
+  'The Ocean Beach — Blue Power Blend': 'smoothie',
+  'The Sunset — Berry Glow':            'smoothie',
 }
 
 const DRINK_CLASSES = {
